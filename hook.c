@@ -18,13 +18,13 @@ asmlinkage long hook_func(void){
 
 void clear_cr0_WP(unsigned long cr0){
 	write_cr0(cr0 & CR0_WP); // 16bit - Write protect
-	printk("[*] cr0 : %x\n", cr0 & CR0_WP);	
+	printk("[*] cr0 : %lx\n", cr0 & CR0_WP);	
 	printk("[*] clear CR0.WP bit\n");	
 }
 
 void set_cr0_WP(unsigned long cr0){
 	write_cr0(cr0);
-	printk("[*] cr0 : %x\n", cr0);
+	printk("[*] cr0 : %lx\n", cr0);
 	printk("[*] set cr0's WP bit\n");	
 }
 
@@ -45,7 +45,6 @@ int hook_init(void){
 }
 
 void hook_cleanup(void){
-
 	unsigned long cr0 = (unsigned long)read_cr0();	
 	clear_cr0_WP(cr0);
 	syscall_table[400] = (void *)orig_zzado;		
