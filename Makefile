@@ -9,3 +9,10 @@ default:
 
 clean:
 	$(MAKE) -C $(KERNEL_DIR) SUBDIRS=$(PWD) clean
+
+ins:
+	insmod hook.ko
+msg :
+	dmesg
+rm:
+	rmmod hook

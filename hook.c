@@ -4,48 +4,53 @@
 #include<linux/syscalls.h>
 #include<linux/hugetlb.h>
 
-unsigned long** syscall_table = (unsigned long**)0xffffffff9c400180;
-int (*set_memory_rw)(unsigned long addr, int numpages);
+#define CR0_WP 0xFFFEFFFF
+unsigned long** syscall_table;
+//int (*set_memory_rw)(unsigned long addr, int numpages);
 
 asmlinkage long (*orig_zzado)(void);
+
 asmlinkage long hook_func(void){
-	printk("Hooked sys_zzado\n");
+	printk("[*] Hooked sys_zzado\n");
+	printk("[*] PID : %lu - %s", (unsigned long)current->pid, current->comm);
 	return (orig_zzado());
 }
 
-int hook_init(void){
+void clear_cr0_WP(unsigned long cr0){
+	write_cr0(cr0 & CR0_WP); // 16bit - Write protect
+	printk("[*] cr0 : %x\n", cr0 & CR0_WP);	
+	printk("[*] clear CR0.WP bit\n");	
+}
 
-/*
-	printk("int size : %zu\n", sizeof(int));
-	printk("long size : %zu\n", sizeof(long));
-	printk("long long size : %zu\n", sizeof(long long));
-*/
-
-//	set_memory_rw = (void *)0xffffffff9466ad80;
-
-	unsigned long orig_cr0 = (unsigned long)read_cr0();	
-	write_cr0(orig_cr0 & ~0x00010000);
+void set_cr0_WP(unsigned long cr0){
+	write_cr0(cr0);
+	printk("[*] cr0 : %x\n", cr0);
 	printk("[*] set cr0's WP bit\n");	
-	
+}
+
+int hook_init(void){
+	unsigned long cr0 = (unsigned long)read_cr0();	
+	syscall_table = (unsigned long**)0xffffffffa4600180;
+
+	clear_cr0_WP(cr0);
+
 	printk("[*] hooking func : %lx\n", (unsigned long)hook_func);	
-	//set_memory_rw(syscall_table, 10);
 	orig_zzado = (void *)syscall_table[400];	
 	printk("[*] sys_zzado : %lx\n", (unsigned long)syscall_table[400]);	
 	syscall_table[400] = (void *)hook_func;	
 	printk("[*] hooked sys_zzado : %lx\n", (unsigned long)syscall_table[400]);	
 	
-	write_cr0(orig_cr0);	
+	set_cr0_WP(cr0);
 	return 0;
 }
 
 void hook_cleanup(void){
-	
-	unsigned long orig_cr0 = (unsigned long)read_cr0();	
-	write_cr0(orig_cr0 & ~0x00010000);
-	syscall_table[400] = (void *)orig_zzado;	
-	write_cr0(orig_cr0);	
-	
-	printk("Module cleanup\n");
+
+	unsigned long cr0 = (unsigned long)read_cr0();	
+	clear_cr0_WP(cr0);
+	syscall_table[400] = (void *)orig_zzado;		
+	set_cr0_WP(cr0);
+	printk("[*] Remove Module\n");
 }
 
 module_init(hook_init);
